@@ -1,6 +1,8 @@
 #import <Cocoa/Cocoa.h>
 #import <vector>
 
+#import "Event.h"
+
 class App {
 	
 	private:
@@ -11,7 +13,6 @@ class App {
 		double then = CFAbsoluteTimeGetCurrent();
 	
 		void cleanup() {
-			NSLog(@"done");
 			if(this->timer){
 				dispatch_source_cancel(this->timer);
 				this->timer = nullptr;
@@ -34,7 +35,13 @@ class App {
 			for(int n=0; n<this->totalFrames; n++) {
 				this->queue.push_back(std::make_pair(nullptr,0));
 			}
-			
+            
+            Event::on(Event::SAVE_COMPLETE,^(NSNotification *notification) {
+                NSLog(@"%@",notification);
+                Event::emit(Event::RESET);
+            });
+            
+            
 			this->timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_queue_create("ENTER_FRAME",0));
 			dispatch_source_set_timer(this->timer,dispatch_time(0,0),(1.0/30)*1000000000,0);
 			dispatch_source_set_event_handler(this->timer,^{
@@ -58,6 +65,7 @@ class App {
 				
 				if(this->frame==this->totalFrames) {
 					this->cleanup();
+                    Event::emit(Event::SAVE_COMPLETE);
 				}
 			});
 			if(this->timer) dispatch_resume(this->timer);
@@ -96,6 +104,11 @@ class App {
 	[[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSDefaultRunLoopMode];
 	[[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSModalPanelRunLoopMode];
 	[[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSEventTrackingRunLoopMode];
+    
+    Event::on(Event::RESET,^(NSNotification *notification) {
+        NSLog(@"%@",notification);
+    });
+    
 }
 -(void)applicationWillTerminate:(NSNotification *)aNotification {
 	if(self->timer&&[self->timer isValid]) [self->timer invalidate];
