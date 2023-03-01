@@ -6,94 +6,174 @@
 #include "zstd.h"
 #include "common.h"
 
-static void compressFile_orDie(const char *fname, const char *outName, int cLevel, int nbThreads) {
-  
-    fprintf (stderr, "Starting compression of %s with level %d, using %d threads\n", fname, cLevel, nbThreads);
+#define STBI_ONLY_PNG
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#import "stb_image.h"
+#import "stb_image_write.h"
 
-    // Open the input and output files.
-    FILE *const fin  = fopen_orDie(fname,"rb");
-    FILE *const fout = fopen_orDie(outName,"wb");
-    /* 
-      Create the input and output buffers.
-      They may be any size, but we recommend using these functions to size them.
-      Performance will only suffer significantly for very tiny buffers.
-    */
+#import <algorithm>
 
-    size_t const buffInSize = ZSTD_CStreamInSize();
-    size_t const buffOutSize = ZSTD_CStreamOutSize();
+unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size, int nbThreads) {
+      
+    unsigned int length = 0;
+    unsigned int seek = 0;
+    
+    const size_t buffInSize = ZSTD_CStreamInSize();
+    const size_t buffOutSize = ZSTD_CStreamOutSize();
 
-    void *const buffIn = malloc_orDie(buffInSize);
-    void *const buffOut = malloc_orDie(buffOutSize);
+    void *buffIn = malloc(buffInSize);
+    void *buffOut = malloc(buffOutSize);
 
-    // Create the context.
-    ZSTD_CCtx *const cctx = ZSTD_createCCtx();
-    CHECK(cctx!=NULL,"ZSTD_createCCtx() failed!");
+    ZSTD_CCtx *cctx = ZSTD_createCCtx();
+    if(cctx!=NULL) {
+        
+        ZSTD_CCtx_setParameter(cctx,ZSTD_c_compressionLevel,1);
+        ZSTD_CCtx_setParameter(cctx,ZSTD_c_checksumFlag,0);
+        ZSTD_CCtx_setParameter(cctx,ZSTD_c_nbWorkers,nbThreads);
 
-    /* 
-      Set any parameters you want.
-      Here we set the compression level, and enable the checksum.
-    */
-    CHECK_ZSTD(ZSTD_CCtx_setParameter(cctx,ZSTD_c_compressionLevel,cLevel));
-    CHECK_ZSTD(ZSTD_CCtx_setParameter(cctx,ZSTD_c_checksumFlag,1));
-    ZSTD_CCtx_setParameter(cctx,ZSTD_c_nbWorkers,nbThreads);
+        const size_t toRead = buffInSize;
+        while(true) {
+            
+            size_t read = toRead;
+            memcpy(buffIn,src+seek,read);
+            seek+=toRead;
+            if(seek>=size) read = buffInSize - (seek-size);
 
-    // This loop read from the input file, compresses that entire chunk, and writes all output produced to the output file.
-    size_t const toRead = buffInSize;
-    for (;;) {
-        size_t read = fread_orDie(buffIn,toRead,fin);
-        /* 
-          Select the flush mode.
-          If the read may not be finished (read == toRead) we use ZSTD_e_continue. If this is the last chunk, we use ZSTD_e_end.
-          Zstd optimizes the case where the first flush mode is ZSTD_e_end, since it knows it is compressing the entire source in one pass.
-        */
-        int const lastChunk = (read<toRead);
-        ZSTD_EndDirective const mode = lastChunk?ZSTD_e_end:ZSTD_e_continue;
-        /* 
-          Set the input buffer to what we just read.
-          We compress until the input buffer is empty, each time flushing the output.
-        */
-        ZSTD_inBuffer input = { buffIn, read, 0 };
-        int finished;
-        do {
-            /* 
-              Compress into the output buffer and write all of the output to the file so we can reuse the buffer next iteration.
-            */
-            ZSTD_outBuffer output = { buffOut, buffOutSize, 0 };
-            size_t const remaining = ZSTD_compressStream2(cctx,&output,&input,mode);
-            CHECK_ZSTD(remaining);
-            fwrite_orDie(buffOut,output.pos,fout);
-            /* 
-              If we're on the last chunk we're finished when zstd returns 0, which means its consumed all the input AND finished the frame.
-              Otherwise, we're finished when we've consumed all the input.
-            */
-            finished = lastChunk?(remaining == 0):(input.pos==input.size);
-        } while (!finished);
-        CHECK(input.pos == input.size,"Impossible: zstd only returns 0 when the input is completely consumed!");
+            int const lastChunk = (read<toRead);
+            ZSTD_EndDirective const mode = lastChunk?ZSTD_e_end:ZSTD_e_continue;
+            ZSTD_inBuffer input = { buffIn, read, 0 };
+            
+            int finished;
+            
+            do {
+                
+                ZSTD_outBuffer output = { buffOut, buffOutSize, 0 };
+                size_t const remaining = ZSTD_compressStream2(cctx,&output,&input,mode);
+                CHECK_ZSTD(remaining);
+                
+                size_t sizeToWrite = output.pos;
+                if(sizeToWrite) {
+                    memcpy((void *)(dst+length),buffOut,sizeToWrite);
+                    length+=sizeToWrite;
+                }
+                
+                finished = lastChunk?(remaining==0):(input.pos==input.size);
+                
+            } while (!finished);
+            
+            if(lastChunk) break;
+        }
+        
+        NSLog(@"length = %fMB",length/(1024.0*1024.0));
 
-        if(lastChunk) break;
+        ZSTD_freeCCtx(cctx);
+        
+        free(buffIn);
+        free(buffOut);
     }
-
-    ZSTD_freeCCtx(cctx);
-    fclose_orDie(fout);
-    fclose_orDie(fin);
-    free(buffIn);
-    free(buffOut);
+    
+    return length;
 }
 
 int main(int argc, const char **argv) {
+
+    int nbThreads = 2;
     
-    int cLevel = 1;
-    int nbThreads = 1;
+    int info[3];
+    unsigned int *image = (unsigned int *)stbi_load("./test.png",info,info+1,info+2,4);
+        
+    if(!image) return 0;
+    
+    unsigned short width = info[0];
+    unsigned short height = info[1];
+    
+    unsigned int size = width*height+(((width*height)>>2)<<1);
+    
+    unsigned char *src = new unsigned char[size];
+    unsigned char *bin = new unsigned char[size];
+    unsigned char *ypbpr = new unsigned char[size];
+    
+    unsigned int *dst = new unsigned int[width*height];
     
     double then = CFAbsoluteTimeGetCurrent();
-    compressFile_orDie("./test.png","./test.zst",cLevel,nbThreads);
-    NSLog(@"%f",CFAbsoluteTimeGetCurrent()-then);
     
-    nbThreads = 4;
+    unsigned char *y = src;
+    unsigned char *u = y+(width*height);
+    unsigned char *v = u+((width*height)>>2);
+
+    for(int i=0; i<height; i++) {
+        for(int j=0; j<width; j++) {
+            
+            unsigned int pix = image[i*width+j];
+            
+            unsigned char r = (pix)&0xFF;
+            unsigned char g = (pix>>8)&0xFF;
+            unsigned char b = (pix>>16)&0xFF;
+            
+            y[i*width+j] = (218*r+732*g+74*b)>>10;
+            
+            if(!((i&1)&&(j&1))) {
+                u[(i>>1)*(width>>1)+(j>>1)] = ((-118*r-394*g+512*b)>>10)+128;
+                v[(i>>1)*(width>>1)+(j>>1)] = ((512*r-465*g-47*b)>>10)+128;
+            }
+        }
+    }
     
-    then = CFAbsoluteTimeGetCurrent();
-    compressFile_orDie("./test.png","./test.zst",cLevel,nbThreads);
+    unsigned int length = compress(bin,src,size,nbThreads);
+    
     NSLog(@"%f",CFAbsoluteTimeGetCurrent()-then);
+
+    if(length) {
+        
+        if(ZSTD_decompress(ypbpr,size,bin,length)) {
+            NSLog(@"Dec");
+            
+            unsigned char *y = ypbpr;
+            unsigned char *u = y+(width*height);
+            unsigned char *v = u+((width*height)>>2);
+
+            for(int i=0; i<height; i++) {
+                for(int j=0; j<width; j++) {
+                    
+                    int luma = (*y++)<<10;
+                    
+                    unsigned int offset = (i>>1)*(width>>1)+(j>>1);
+                    
+                    int pb = u[offset]-128;
+                    int pr = v[offset]-128;
+                    
+                    unsigned char r = std::clamp((luma+1612*pr)>>10,0,255);
+                    unsigned char g = std::clamp((luma-191*pb-479*pr)>>10,0,255);
+                    unsigned char b = std::clamp((luma+1901*pb)>>10,0,255);
+                    
+                    dst[i*width+j] = 0xFF000000|b<<16|g<<8|r;
+                }
+            }
+            
+            stbi_write_png("dst.png",width,height,4,(void const*)dst,width<<2);
+        }
+    }
+
+    if(dst) {
+        delete[] dst;
+        dst = nullptr;
+    }
+    
+    if(ypbpr) {
+        delete[] ypbpr;
+        ypbpr = nullptr;
+    }
+    
+    if(bin) {
+        delete[] bin;
+        bin = nullptr;
+    }
+    
+    if(src) {
+        delete[] src;
+        src = nullptr;
+    }
     
     return 0;
 }
