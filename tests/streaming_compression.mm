@@ -33,8 +33,8 @@ static void compressFile_orDie(const char *fname, const char *outName, int cLeve
       Set any parameters you want.
       Here we set the compression level, and enable the checksum.
     */
-    CHECK_ZSTD( ZSTD_CCtx_setParameter(cctx,ZSTD_c_compressionLevel,cLevel));
-    CHECK_ZSTD( ZSTD_CCtx_setParameter(cctx,ZSTD_c_checksumFlag,1) );
+    CHECK_ZSTD(ZSTD_CCtx_setParameter(cctx,ZSTD_c_compressionLevel,cLevel));
+    CHECK_ZSTD(ZSTD_CCtx_setParameter(cctx,ZSTD_c_checksumFlag,1));
     ZSTD_CCtx_setParameter(cctx,ZSTD_c_nbWorkers,nbThreads);
 
     // This loop read from the input file, compresses that entire chunk, and writes all output produced to the output file.
@@ -80,36 +80,20 @@ static void compressFile_orDie(const char *fname, const char *outName, int cLeve
     free(buffOut);
 }
 
-static char* createOutFilename_orDie(const char *filename) {
-    size_t const inL = strlen(filename);
-    size_t const outL = inL+5;
-    void* const outSpace = malloc_orDie(outL);
-    memset(outSpace,0,outL);
-    strcat((char *)outSpace,filename);
-    strcat((char *)outSpace,".zst");
-    return (char*)outSpace;
-}
-
 int main(int argc, const char **argv) {
-  
-    const char* const exeName = argv[0];
-
-    if(argc < 2) {
-        printf("wrong arguments\n");
-        printf("usage:\n");
-        printf("%s FILE [LEVEL] [THREADS]\n",exeName);
-        return 1;
-    }
-
-    int cLevel = 1;
-    int nbThreads = 4;
-
-    const char *const inFilename = argv[1];
-
-    const char *outFilename = createOutFilename_orDie(inFilename);
-    compressFile_orDie(inFilename,outFilename,cLevel,nbThreads);
     
-    // not strictly required, since program execution stops there, but some static analyzer may complain otherwise
-    free((void *)outFilename);
+    int cLevel = 1;
+    int nbThreads = 1;
+    
+    double then = CFAbsoluteTimeGetCurrent();
+    compressFile_orDie("./test.png","./test.zst",cLevel,nbThreads);
+    NSLog(@"%f",CFAbsoluteTimeGetCurrent()-then);
+    
+    nbThreads = 4;
+    
+    then = CFAbsoluteTimeGetCurrent();
+    compressFile_orDie("./test.png","./test.zst",cLevel,nbThreads);
+    NSLog(@"%f",CFAbsoluteTimeGetCurrent()-then);
+    
     return 0;
 }
