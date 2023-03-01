@@ -65,7 +65,6 @@ unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size,
             if(lastChunk) break;
         }
         
-        NSLog(@"length = %fMB",length/(1024.0*1024.0));
 
         ZSTD_freeCCtx(cctx);
         
@@ -76,9 +75,43 @@ unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size,
     return length;
 }
 
+void convert(unsigned char *ypbpr, unsigned int *abgr, int width, int height, int begin, int end) {
+    
+    unsigned char *u = ypbpr+(width*height);
+    unsigned char *v = u+((width*height)>>2);
+
+    for(int i=begin; i<end; i++) {
+        
+        unsigned char *y = ypbpr+i*width;
+        unsigned char left = 0;
+        
+        for(int j=0; j<width; j++) {
+            
+            unsigned int pix = abgr[i*width+j];
+            
+            unsigned char r = (pix)&0xFF;
+            unsigned char g = (pix>>8)&0xFF;
+            unsigned char b = (pix>>16)&0xFF;
+            
+            int luma = ((218*r+732*g+74*b)>>10);
+            
+            y[j] = (luma-left)&0xFF;
+            left = luma;
+            
+            if(!((i&1)&&(j&1))) {
+                u[(i>>1)*(width>>1)+(j>>1)] = ((-118*r-394*g+512*b)>>10)+128;
+                v[(i>>1)*(width>>1)+(j>>1)] = ((512*r-465*g-47*b)>>10)+128;
+            }
+        }
+    }
+}
+
+dispatch_group_t group = dispatch_group_create();
+dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH,0);
+
 int main(int argc, const char **argv) {
 
-    int nbThreads = 2;
+    int nbThreads = 4;
     
     int info[3];
     unsigned int *image = (unsigned int *)stbi_load("./test.png",info,info+1,info+2,4);
@@ -97,43 +130,30 @@ int main(int argc, const char **argv) {
     unsigned int *dst = new unsigned int[width*height];
     
     double then = CFAbsoluteTimeGetCurrent();
+        
+    int h = height>>2;
     
-    unsigned char *u = src+(width*height);
-    unsigned char *v = u+((width*height)>>2);
+    for(int n=0; n<4; n++) {
 
-    for(int i=0; i<height; i++) {
-        
-        unsigned char *y = src+i*width;
-        unsigned char left = 0;
-        
-        for(int j=0; j<width; j++) {
-            
-            unsigned int pix = image[i*width+j];
-            
-            unsigned char r = (pix)&0xFF;
-            unsigned char g = (pix>>8)&0xFF;
-            unsigned char b = (pix>>16)&0xFF;
-            
-            int luma = ((218*r+732*g+74*b)>>10);
-            
-            y[j] = (luma-left)&0xFF;
-            left = luma;
-            
-            if(!((i&1)&&(j&1))) {
-                u[(i>>1)*(width>>1)+(j>>1)] = ((-118*r-394*g+512*b)>>10)+128;
-                v[(i>>1)*(width>>1)+(j>>1)] = ((512*r-465*g-47*b)>>10)+128;
+        dispatch_group_async(group,queue,^{
+            if(n==3) {
+                convert(src,image,width,height,h*n,height);
             }
-        }
+            else {
+                convert(src,image,width,height,h*n,h*(n+1));
+            }
+        });
     }
+    
+    dispatch_group_wait(group,DISPATCH_TIME_FOREVER);
     
     unsigned int length = compress(bin,src,size,nbThreads);
     
-    NSLog(@"%f",CFAbsoluteTimeGetCurrent()-then);
+    NSLog(@"%f %0.2fMB",CFAbsoluteTimeGetCurrent()-then,length/(1024.0*1024.0));
 
     if(length) {
         
         if(ZSTD_decompress(ypbpr,size,bin,length)) {
-            NSLog(@"Dec");
             
             unsigned char *y = ypbpr;
             unsigned char *u = y+(width*height);
