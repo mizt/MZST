@@ -98,11 +98,14 @@ int main(int argc, const char **argv) {
     
     double then = CFAbsoluteTimeGetCurrent();
     
-    unsigned char *y = src;
-    unsigned char *u = y+(width*height);
+    unsigned char *u = src+(width*height);
     unsigned char *v = u+((width*height)>>2);
 
     for(int i=0; i<height; i++) {
+        
+        unsigned char *y = src+i*width;
+        unsigned char left = 0;
+        
         for(int j=0; j<width; j++) {
             
             unsigned int pix = image[i*width+j];
@@ -111,7 +114,10 @@ int main(int argc, const char **argv) {
             unsigned char g = (pix>>8)&0xFF;
             unsigned char b = (pix>>16)&0xFF;
             
-            y[i*width+j] = (218*r+732*g+74*b)>>10;
+            int luma = ((218*r+732*g+74*b)>>10);
+            
+            y[j] = (luma-left)&0xFF;
+            left = luma;
             
             if(!((i&1)&&(j&1))) {
                 u[(i>>1)*(width>>1)+(j>>1)] = ((-118*r-394*g+512*b)>>10)+128;
@@ -134,9 +140,13 @@ int main(int argc, const char **argv) {
             unsigned char *v = u+((width*height)>>2);
 
             for(int i=0; i<height; i++) {
+                
+                unsigned char left = 0;
+                
                 for(int j=0; j<width; j++) {
                     
-                    int luma = (*y++)<<10;
+                    left = (left+(*y++));
+                    int luma = left<<10;
                     
                     unsigned int offset = (i>>1)*(width>>1)+(j>>1);
                     
