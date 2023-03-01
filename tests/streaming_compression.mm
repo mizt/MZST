@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "zstd.h"
-#include "common.h"
 
 #define STBI_ONLY_PNG
 #define STB_IMAGE_IMPLEMENTATION
@@ -50,7 +49,6 @@ unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size,
                 
                 ZSTD_outBuffer output = { buffOut, buffOutSize, 0 };
                 size_t const remaining = ZSTD_compressStream2(cctx,&output,&input,mode);
-                CHECK_ZSTD(remaining);
                 
                 size_t sizeToWrite = output.pos;
                 if(sizeToWrite) {
