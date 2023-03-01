@@ -5,9 +5,9 @@ class App {
 	
 	private:
 	
-		NSFileHandle *_handle;
+		NSFileHandle *_handle = nil;
 
-		dispatch_source_t timer;
+		dispatch_source_t timer = nullptr;
 		double then = CFAbsoluteTimeGetCurrent();
 	
 		void cleanup() {
