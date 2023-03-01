@@ -129,9 +129,9 @@ int main(int argc, const char **argv) {
     
     double then = CFAbsoluteTimeGetCurrent();
         
-    int h = height>>2;
+    int h = height/nbThreads;
     
-    for(int n=0; n<4; n++) {
+    for(int n=0; n<nbThreads; n++) {
 
         dispatch_group_async(group,queue,^{
             if(n==3) {
