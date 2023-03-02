@@ -3,42 +3,63 @@ namespace Event {
     NSString *SAVE_COMPLETE = @"SAVE_COMPLETE";
     NSString *RESET = @"RESET";
 
-    std::vector<std::pair<NSString *,id>> events;
+    class Observer {
+        
+        private:
+            
+            NSString *_type = nil;
+            id _observer = nil;
+        
+        public:
+            
+            Observer(NSString *type, id observer) {
+                this->_type = type;
+                this->_observer = observer;
+            }
+        
+            NSString *type() { return this->_type; }
+            id observer() { return this->_observer; }
+        
+            ~Observer() {
+                this->_observer = nil;
+            }
+    };
+    std::vector<Observer *> events;
 
-    void on(NSString *event, void (^callback)(NSNotification *)) {
+    void on(NSString *type, void (^callback)(NSNotification *)) {
                 
         id observer = nil;
         
         long len = events.size();
         while(len--) {
-            if(events[len].first&&[event compare:events[len].first]==NSOrderedSame) {
-                observer = events[len].second;
+            if(events[len]->type()&&[events[len]->type() compare:type]==NSOrderedSame) {
+                observer = events[len]->observer();
                 break;
             }
         }
         
         if(observer==nil) {
             id observer = [[NSNotificationCenter defaultCenter]
-                addObserverForName:event
+                addObserverForName:type
                 object:nil
                 queue:[NSOperationQueue mainQueue]
                 usingBlock:callback
             ];
             
-            events.push_back(std::make_pair(event,observer));
+            events.push_back(new Observer(type,observer));
         }
         else {
-            NSLog(@"%@ is already registered",event);
+            NSLog(@"%@ is already registered",type);
         }
     }
 
-    void off(NSString *event) {
+    void off(NSString *type) {
         
         id observer = nil;
         long len = events.size();
         while(len--) {
-            if(events[len].first&&[event compare:events[len].first]==NSOrderedSame) {
-                observer = events[len].second;
+            if(events[len]->type()&&[events[len]->type() compare:type]==NSOrderedSame) {
+                observer = events[len]->observer();
                 events.erase(events.begin()+len);
                 break;
             }
