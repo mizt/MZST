@@ -75,25 +75,25 @@ unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size,
 }
 
 class App {
-	
-	private:
-    	
-		NSFileHandle *_handle = nil;
 
-		dispatch_source_t _timer = nullptr;
-		double _then = CFAbsoluteTimeGetCurrent();
+    private:
+
+        NSFileHandle *_handle = nil;
+
+        dispatch_source_t _timer = nullptr;
+        double _then = CFAbsoluteTimeGetCurrent();
     
         const unsigned short _width = 3840;
         const unsigned short _height = 2160;
         unsigned char *_src = nullptr;
         unsigned char *_bin = nullptr;
-	
-		void cleanup() {
+
+        void cleanup() {
             
-			if(this->_timer){
-				dispatch_source_cancel(this->_timer);
-				this->_timer = nullptr;
-			}
+            if(this->_timer){
+                dispatch_source_cancel(this->_timer);
+                this->_timer = nullptr;
+            }
             
             if(this->_src) {
                 delete[] this->_src;
@@ -104,21 +104,20 @@ class App {
                 delete[] this->_bin;
                 this->_bin = nullptr;
             }
-		}
-	
-		unsigned int _frame = 0;
-		std::vector<std::pair<unsigned char *,unsigned int>> _queue;
+        }
+
+        unsigned int _frame = 0;
+        std::vector<std::pair<unsigned char *,unsigned int>> _queue;
     
         std::vector<MultiTrackQTMovie::TrackInfo> _info;
         MultiTrackQTMovie::Recorder *_recorder = nullptr;
         
-	public:
-		
-		App() {
+    public:
+    
+        App() {
             
             this->_info.push_back({.width=this->_width,.height=this->_height,.depth=24,.fps=30.,.type="mzst"});
             this->_recorder = new MultiTrackQTMovie::Recorder(@"./test.mov",&this->_info);
-
 
             unsigned int size = (this->_width*this->_height)+(((this->_width*this->_height)>>2)<<1);
             this->_src = new unsigned char[size];
@@ -127,13 +126,13 @@ class App {
             this->_bin = new unsigned char[size];
             for(int n=0; n<size; n++) this->_bin[n] = 0;
             
-			[[NSFileManager defaultManager] createFileAtPath:@"./test.bin" contents:nil attributes:nil];
-			
-			this->_handle = [NSFileHandle fileHandleForWritingAtPath:@"./test.bin"];
-			
-			for(int n=0; n<TOTAL_FRAMES; n++) {
-				this->_queue.push_back(std::make_pair(nullptr,0));
-			}
+            [[NSFileManager defaultManager] createFileAtPath:@"./test.bin" contents:nil attributes:nil];
+
+            this->_handle = [NSFileHandle fileHandleForWritingAtPath:@"./test.bin"];
+
+            for(int n=0; n<TOTAL_FRAMES; n++) {
+                this->_queue.push_back(std::make_pair(nullptr,0));
+            }
             
             Event::on(Event::SAVE_COMPLETE,^(NSNotification *notification) {
                 
@@ -165,10 +164,10 @@ class App {
                 }
                 
             });
-		}
-	
-		void set(int frame) {
-			if(frame<TOTAL_FRAMES) {
+        }
+
+        void set(int frame) {
+            if(frame<TOTAL_FRAMES) {
                 unsigned int size = (this->_width*this->_height)+(((this->_width*this->_height)>>2)<<1);
                 for(int n=0; n<this->_width*this->_height; n++) this->_src[n] = frame;
                 unsigned int length = compress(this->_bin,this->_src,size,4);
@@ -177,31 +176,31 @@ class App {
                 if(frame==TOTAL_FRAMES-1) {
                     this->_recorder->save();
                 }
-			}
-		}
-		
-		~App() {
+            }
+        }
+
+        ~App() {
             this->cleanup();
-		}
+        }
 };
 
 @interface AppDelegate:NSObject <NSApplicationDelegate> {
-	App *app;
-	NSTimer *timer;
-	double then;
-	unsigned int frame;
+    App *app;
+    NSTimer *timer;
+    double then;
+    unsigned int frame;
 }
 @end
 
 @implementation AppDelegate
 -(void)applicationDidFinishLaunching:(NSNotification*)aNotification {
-	self->frame = 0;
-	self->app = new App();
-	self->then = CFAbsoluteTimeGetCurrent();
-	self->timer = [NSTimer scheduledTimerWithTimeInterval:1.0/30.0 target:self selector:@selector(update:) userInfo:nil repeats:YES];
-	[[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSDefaultRunLoopMode];
-	[[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSModalPanelRunLoopMode];
-	[[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSEventTrackingRunLoopMode];
+    self->frame = 0;
+    self->app = new App();
+    self->then = CFAbsoluteTimeGetCurrent();
+    self->timer = [NSTimer scheduledTimerWithTimeInterval:1.0/30.0 target:self selector:@selector(update:) userInfo:nil repeats:YES];
+    [[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSDefaultRunLoopMode];
+    [[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSModalPanelRunLoopMode];
+    [[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSEventTrackingRunLoopMode];
     
     Event::on(Event::RESET,^(NSNotification *notification) {
         delete self->app;
@@ -211,27 +210,27 @@ class App {
 }
 
 -(void)applicationWillTerminate:(NSNotification *)aNotification {
-	if(self->timer&&[self->timer isValid]) [self->timer invalidate];
-	if(self->app) delete self->app;
+    if(self->timer&&[self->timer isValid]) [self->timer invalidate];
+    if(self->app) delete self->app;
 }
 
 -(void)update:(NSTimer*)timer {
-	if(self->app) {
-		if(self->frame<TOTAL_FRAMES) {
-			double current = CFAbsoluteTimeGetCurrent();
+    if(self->app) {
+        if(self->frame<TOTAL_FRAMES) {
+            double current = CFAbsoluteTimeGetCurrent();
             self->app->set(self->frame++);
-			NSLog(@"%f",current-self->then);
-			self->then = current;
-		}
-	}
+            NSLog(@"%f",current-self->then);
+            self->then = current;
+        }
+    }
 }
 @end
 
 int main(int argc, char *argv[]) {
-	@autoreleasepool {
-		id app = [NSApplication sharedApplication];
-		id delegat = [AppDelegate alloc];
-		[app setDelegate:delegat];
-		[app run];
-	}
+    @autoreleasepool {
+        id app = [NSApplication sharedApplication];
+        id delegat = [AppDelegate alloc];
+        [app setDelegate:delegat];
+        [app run];
+    }
 }
