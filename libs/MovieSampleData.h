@@ -15,12 +15,13 @@ class MovieSampleData {
 	
 		unsigned int length() { return this->_length; }
 		unsigned long offset() { return this->_offset; };
-
+    
+       
 		std::vector<bool> *keyframes() { return &this->_keyframes; }
 		std::vector<unsigned long> *offsets() { return &this->_offsets; }
 		std::vector<unsigned int> *lengths() { return &this->_lengths; };
-		
-		void writeData(NSFileHandle *handle, unsigned char *bytes, unsigned long length, bool keyframe) {
+    
+		void writeData(NSFileHandle *handle, unsigned char *bytes, unsigned int length, bool keyframe) {
 			this->_offsets.push_back(this->_offset+this->_length);
 			this->_lengths.push_back(length);
 			[handle writeData:[[NSData alloc] initWithBytes:bytes length:length]];
@@ -39,7 +40,7 @@ class MovieSampleData {
 			[handle seekToEndOfFile];
 		}
 	
-		MovieSampleData(NSFileHandle *handle, unsigned int offset) {
+		MovieSampleData(NSFileHandle *handle, unsigned long offset) {
 			this->_offset = offset;
 			[handle writeData:[[NSData alloc] initWithBytes:new unsigned char[8]{0,0,0,0,'m','d','a','t'} length:8]];
 			[handle seekToEndOfFile];

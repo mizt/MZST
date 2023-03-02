@@ -10,7 +10,10 @@
 
 #import <algorithm>
 
-#define TOTAL_FRAMES 256
+#import "MultiTrackQTMovie.h"
+#import "MultiTrackQTMovieParser.h"
+
+#define TOTAL_FRAMES 17
 
 unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size, int nbThreads) {
       
@@ -42,7 +45,7 @@ unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size,
             ZSTD_EndDirective const mode = lastChunk?ZSTD_e_end:ZSTD_e_continue;
             ZSTD_inBuffer input = { buffIn, read, 0 };
             
-            bool finished;
+            bool finished = false;
             
             do {
                 
@@ -74,129 +77,106 @@ unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size,
 class App {
 	
 	private:
-    
-        const unsigned int SIZE = 4;
-	
+    	
 		NSFileHandle *_handle = nil;
 
-		dispatch_source_t timer = nullptr;
-		double then = CFAbsoluteTimeGetCurrent();
+		dispatch_source_t _timer = nullptr;
+		double _then = CFAbsoluteTimeGetCurrent();
     
-        const unsigned short width = 3840;
-        const unsigned short height = 2160;
-        unsigned char *src = nullptr;
-        unsigned char *bin = nullptr;
+        const unsigned short _width = 3840;
+        const unsigned short _height = 2160;
+        unsigned char *_src = nullptr;
+        unsigned char *_bin = nullptr;
 	
 		void cleanup() {
             
-			if(this->timer){
-				dispatch_source_cancel(this->timer);
-				this->timer = nullptr;
+			if(this->_timer){
+				dispatch_source_cancel(this->_timer);
+				this->_timer = nullptr;
 			}
             
-            if(this->src) {
-                delete[] this->src;
-                this->src = nullptr;
+            if(this->_src) {
+                delete[] this->_src;
+                this->_src = nullptr;
             }
             
-            if(this->bin) {
-                delete[] this->bin;
-                this->bin = nullptr;
+            if(this->_bin) {
+                delete[] this->_bin;
+                this->_bin = nullptr;
             }
 		}
 	
-		unsigned int frame = 0;
-		std::vector<std::pair<unsigned char *,unsigned int>> queue;
+		unsigned int _frame = 0;
+		std::vector<std::pair<unsigned char *,unsigned int>> _queue;
+    
+        std::vector<MultiTrackQTMovie::TrackInfo> _info;
+        MultiTrackQTMovie::Recorder *_recorder = nullptr;
         
 	public:
 		
 		App() {
-
-            unsigned int size = (this->width*this->height)+(((this->width*this->height)>>2)<<1);
-            this->src = new unsigned char[size];
-            for(int n=0; n<size; n++) this->src[n] = 128;
             
-            this->bin = new unsigned char[SIZE+size];
-            for(int n=0; n<SIZE+size; n++) this->bin[n] = 0;
+            this->_info.push_back({.width=this->_width,.height=this->_height,.depth=24,.fps=30.,.type="mzst"});
+            this->_recorder = new MultiTrackQTMovie::Recorder(@"./test.mov",&this->_info);
+
+
+            unsigned int size = (this->_width*this->_height)+(((this->_width*this->_height)>>2)<<1);
+            this->_src = new unsigned char[size];
+            for(int n=0; n<size; n++) this->_src[n] = 128;
+            
+            this->_bin = new unsigned char[size];
+            for(int n=0; n<size; n++) this->_bin[n] = 0;
             
 			[[NSFileManager defaultManager] createFileAtPath:@"./test.bin" contents:nil attributes:nil];
 			
 			this->_handle = [NSFileHandle fileHandleForWritingAtPath:@"./test.bin"];
 			
 			for(int n=0; n<TOTAL_FRAMES; n++) {
-				this->queue.push_back(std::make_pair(nullptr,0));
+				this->_queue.push_back(std::make_pair(nullptr,0));
 			}
             
             Event::on(Event::SAVE_COMPLETE,^(NSNotification *notification) {
                 
-                NSData *data = [[NSData alloc] initWithContentsOfFile:@"./test.bin"];
-                unsigned char *bytes = (unsigned char *)data.bytes;
-                
-                unsigned int frame = 255;
-                if(frame>=TOTAL_FRAMES) frame = TOTAL_FRAMES-1;
-                
-                unsigned int offset = 0;
-                
-                for(int n=0; n<frame; n++) {
-                    offset+=SIZE+(*((unsigned int *)(bytes+offset)));
+                if(this->_recorder) {
+                    delete this->_recorder;
+                    this->_recorder = nullptr;
                 }
                 
-                unsigned int length = (*((unsigned int *)(bytes+offset)));
-                unsigned int size = (this->width*this->height)+(((this->width*this->height)>>2)<<1);
-                unsigned char *ypbpr = new unsigned char[size];
+                MultiTrackQTMovie::Parser *parser = new MultiTrackQTMovie::Parser(@"./test.mov");
+                NSLog(@"tracks = %d",parser->tracks());
                 
-                if(ZSTD_decompress(ypbpr,size,bytes+offset+SIZE,length)) {
-                    NSLog(@"%d",*ypbpr);
-                    NSLog(@"%d",*(ypbpr+(this->width*this->height)));
-                }
-                
-                delete[] ypbpr;
+                if(parser->type(0)=="mzst") {
                     
-                Event::emit(Event::RESET);
-            });
-            
-			this->timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_queue_create("ENTER_FRAME",0));
-			dispatch_source_set_timer(this->timer,dispatch_time(0,0),(1.0/30)*1000000000,0);
-			dispatch_source_set_event_handler(this->timer,^{
-				
-				if(this->queue[this->frame].first!=nullptr) {
-                    	
-                    NSLog(@"write %d",this->frame);
+                    unsigned int frame = 15;
+                    NSData *data = parser->get(frame,0);
+                    unsigned char *bytes = (unsigned char *)data.bytes;
+                    unsigned long length = data.length;
+                    unsigned int size = (this->_width*this->_height)+(((this->_width*this->_height)>>2)<<1);
+                    unsigned char *ypbpr = new unsigned char[size];
                     
-					[this->_handle seekToEndOfFile];
-					[this->_handle writeData:[[NSData alloc] initWithBytes:this->queue[this->frame].first length:this->queue[this->frame].second]];
-							
-                    if(this->queue[this->frame].first) {
-                        delete[] this->queue[this->frame].first;
-                        this->queue[this->frame].first = nullptr;
+                    if(ZSTD_decompress(ypbpr,size,bytes,length)) {
+                        NSLog(@"%d",*ypbpr);
+                        NSLog(@"%d",*(ypbpr+(this->_width*this->_height)));
                     }
-					
-					this->frame++;
-				}
-				
-				if(this->frame==TOTAL_FRAMES) {
-					this->cleanup();
-                    Event::emit(Event::SAVE_COMPLETE);
-				}
-			});
-			if(this->timer) dispatch_resume(this->timer);
+                    
+                    delete[] ypbpr;
+                        
+                    Event::emit(Event::RESET);
+                }
+                
+            });
 		}
 	
 		void set(int frame) {
-            
 			if(frame<TOTAL_FRAMES) {
+                unsigned int size = (this->_width*this->_height)+(((this->_width*this->_height)>>2)<<1);
+                for(int n=0; n<this->_width*this->_height; n++) this->_src[n] = frame;
+                unsigned int length = compress(this->_bin,this->_src,size,4);
+                this->_recorder->add(this->_bin,length,0);
                 
-                for(int n=0; n<this->width*this->height; n++) this->src[n] = frame;
-                
-                unsigned int size = (this->width*this->height)+(((this->width*this->height)>>2)<<1);
-                unsigned int length = compress(this->bin+SIZE,this->src,size,4);
-                *((unsigned int *)(this->bin)) = length;
-                                
-				this->queue[frame].first = new unsigned char[SIZE+length];
-				this->queue[frame].second = SIZE+length;
-                
-				unsigned char *p = this->queue[frame].first;
-                for(int n=0; n<SIZE+length; n++) p[n] = this->bin[n];
+                if(frame==TOTAL_FRAMES-1) {
+                    this->_recorder->save();
+                }
 			}
 		}
 		
