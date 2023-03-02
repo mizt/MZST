@@ -13,7 +13,7 @@
 #import "MultiTrackQTMovie.h"
 #import "MultiTrackQTMovieParser.h"
 
-#define TOTAL_FRAMES 17
+#define TOTAL_FRAMES 256
 
 unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size, int nbThreads) {
       
