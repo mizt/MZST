@@ -54,4 +54,3 @@ namespace Event {
         [[NSNotificationCenter defaultCenter] postNotificationName:event object:nil];
     }
 };
-
