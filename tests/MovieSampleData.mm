@@ -1,5 +1,5 @@
 #import <Foundation/Foundation.h>
-#import "MovieSampleData.h"
+#import "../libs/MovieSampleData.h"
 
 int main(int argc, char *argv[]) {
 	@autoreleasepool {
