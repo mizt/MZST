@@ -42,7 +42,7 @@ unsigned int compress(unsigned char *dst, unsigned char *src, unsigned int size,
             ZSTD_EndDirective const mode = lastChunk?ZSTD_e_end:ZSTD_e_continue;
             ZSTD_inBuffer input = { buffIn, read, 0 };
             
-            int finished;
+            bool finished;
             
             do {
                 
@@ -141,7 +141,7 @@ class App {
                     offset+=SIZE+(*((unsigned int *)(bytes+offset)));
                 }
                 
-                unsigned int length = (*((unsigned int *)(bytes+offset)));                
+                unsigned int length = (*((unsigned int *)(bytes+offset)));
                 unsigned int size = (this->width*this->height)+(((this->width*this->height)>>2)<<1);
                 unsigned char *ypbpr = new unsigned char[size];
                 
