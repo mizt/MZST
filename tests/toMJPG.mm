@@ -13,7 +13,7 @@ class App {
     
     private:
 
-        MultiTrackQTMovie::Parser *_parser = new MultiTrackQTMovie::Parser(@"/Users/mizt/Downloads/2023_0302_1950_13_071.mov");
+        MultiTrackQTMovie::Parser *_parser = new MultiTrackQTMovie::Parser(@"./test.mov");
     
         std::vector<MultiTrackQTMovie::TrackInfo> _info;
         MultiTrackQTMovie::Recorder *_recorder = nullptr;
@@ -21,8 +21,6 @@ class App {
     public:
     
         App() {
-            
-            this->_parser = new MultiTrackQTMovie::Parser(@"/Users/mizt/Downloads/2023_0302_1950_13_071.mov");
             
             NSLog(@"tracks = %d",this->_parser->tracks());
             NSLog(@"length = %d",this->_parser->length(0));
