@@ -1,3 +1,5 @@
+#import <vector>
+
 namespace Event {
 
     NSString *SAVE_COMPLETE = @"SAVE_COMPLETE";
