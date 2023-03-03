@@ -53,7 +53,6 @@ namespace EventEmitter {
     }
 
     void off(NSString *type) {
-        
         id observer = nil;
         long len = events.size();
         while(len--) {
