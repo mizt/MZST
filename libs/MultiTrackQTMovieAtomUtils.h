@@ -599,23 +599,32 @@ namespace MultiTrackQTMovie {
                     }
                     
                     if(avc1||hvc1) {
-                    
+                        
                         this->setAtomSize(stsz.second);
-                        Atom stco = this->initAtom("stco");
-                        this->setVersionWithFlag();
-                        
-                        // TODO:
-                        this->setU32(1); // Number of entries
-                        
-                        std::vector<unsigned long> *offsets = mdat[n][0]->offsets();
-                        this->setU32((unsigned int)((*offsets)[0]));
+                    
+                        if(this->is64) {
+                            Atom stco = this->initAtom("co64");
+                            this->setVersionWithFlag();
+                            this->setU32(1); // Number of entries
+                            std::vector<unsigned long> *offsets = mdat[n][0]->offsets();
+                            this->setU32((unsigned int)((*offsets)[0]));
+                        }
+                        else {
+                            Atom stco = this->initAtom("stco");
+                            this->setVersionWithFlag();
+                            this->setU32(1); // Number of entries
+                            std::vector<unsigned long> *offsets = mdat[n][0]->offsets();
+                            this->setU64((*offsets)[0]);
+                        }
                         
                         this->setAtomSize(stco.second);
+                        
                     }
                     else {
                         
+                        this->setAtomSize(stsz.second);
+                        
                         if(this->is64) {
-                            this->setAtomSize(stsz.second);
                             Atom co64 = this->initAtom("co64");
                             this->setVersionWithFlag();
                             this->setU32(TotalFrames);
@@ -629,7 +638,6 @@ namespace MultiTrackQTMovie {
                             this->setAtomSize(co64.second);
                         }
                         else {
-                            this->setAtomSize(stsz.second);
                             Atom stco = this->initAtom("stco");
                             this->setVersionWithFlag();
                             this->setU32(TotalFrames);
@@ -658,4 +666,5 @@ namespace MultiTrackQTMovie {
             }
         };
 }
+        
         
