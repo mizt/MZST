@@ -1,8 +1,7 @@
 #import <vector>
 #import <string>
 
-#import "MovieSampleData.h"
-
+#import "MultiTrackQTMovieSampleData.h"
 #import "MultiTrackQTMovieUtils.h"
 #import "MultiTrackQTMovieAtomUtils.h"
 
@@ -106,14 +105,14 @@ namespace MultiTrackQTMovie {
         
             dispatch_source_t _timer = nullptr;
             std::vector<Buffer *> *_queue;
-            std::vector<MovieSampleData *> *_mdat;
+            std::vector<SampleData *> *_mdat;
         
             unsigned long _offset = 0;
             
             void inialized() {
                 
                 if(this->_info->size()>=1) {
-                    this->_mdat = new std::vector<MovieSampleData *>[this->_info->size()];
+                    this->_mdat = new std::vector<SampleData *>[this->_info->size()];
                     this->_queue = new std::vector<Buffer *>[this->_info->size()];
                 }
                 
@@ -151,7 +150,7 @@ namespace MultiTrackQTMovie {
                 this->inialized();
                 
                 this->_timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_queue_create("ENTER_FRAME",0));
-                dispatch_source_set_timer(this->_timer,dispatch_time(0,0),(1.0/30)*1000000000,0);
+                dispatch_source_set_timer(this->_timer,DISPATCH_TIME_NOW,NSEC_PER_SEC/30.0,0);
                 dispatch_source_set_event_handler(this->_timer,^{
                     
                     if(!(this->_isSaving||this->_isRunning)) return;
@@ -166,29 +165,23 @@ namespace MultiTrackQTMovie {
                         unsigned long size = this->_queue[n].size();
                         for(int k=0; k<size; k++) {
                                                                 
-                             if(this->_queue[n][k]) {
+                            if(this->_queue[n][k]) {
                                  
-                                 bool keyframe = this->_queue[n][k]->keyframe();
-                                 unsigned int length = this->_queue[n][k]->length();
-                                 unsigned char *bytes = this->_queue[n][k]->bytes();
-                                 
-                                 if(this->_mdat[n].size()==0) {
-                                     this->_mdat[n].push_back(new MovieSampleData(this->_handle,this->_offset));
-                                 }
-                                 
-                                 if(this->_mdat[n][this->_mdat[n].size()-1]->length()+length>=MDAT_LIMIT) {
-                                     this->_mdat[n][this->_mdat[n].size()-1]->writeSize(this->_handle);
-                                     this->_offset+=this->_mdat[n][this->_mdat[n].size()-1]->length();
-                                     this->_mdat[n].push_back(new MovieSampleData(this->_handle,this->_offset));
-                                 }
+                                bool keyframe = this->_queue[n][k]->keyframe();
+                                unsigned int length = this->_queue[n][k]->length();
+                                unsigned char *bytes = this->_queue[n][k]->bytes();
                                 
-                                 this->_mdat[n][this->_mdat[n].size()-1]->writeData(this->_handle,bytes,length,keyframe);
-                             
-                                 delete this->_queue[n][k];
-                                 this->_queue[n][k] = nullptr;
-                                 
-                                 break;
-                             }
+                                if(this->_mdat[n].size()==0) {
+                                    this->_mdat[n].push_back(new SampleData(this->_handle,this->_offset));
+                                }
+                                
+                                this->_mdat[n][this->_mdat[n].size()-1]->writeData(this->_handle,bytes,length,keyframe);
+                                
+                                delete this->_queue[n][k];
+                                this->_queue[n][k] = nullptr;
+                                
+                                break;
+                            }
                             
                             if(k==size-1) finished[n] = true;
                         }
