@@ -1,8 +1,8 @@
 #import <Cocoa/Cocoa.h>
 #import "zstd.h"
 
-#import "Event.h"
-
+#import "EventEmitter.h"
+#import "MultiTrackQTMovieEvent.h"
 #import "MultiTrackQTMovieParser.h"
 #import "turbojpeg.h"
 
@@ -92,8 +92,8 @@ class App {
                 delete[] yuv420;
                 delete[] ypbpr;
                 delete[] jpg;
-                
-                Event::on(Event::SAVE_COMPLETE,^(NSNotification *notification) {
+
+                EventEmitter::on(MultiTrackQTMovie::Event::SAVE_COMPLETE,^(NSNotification *notification) {
                     if(this->_recorder) {
                         delete this->_recorder;
                         this->_recorder = nullptr;
@@ -102,6 +102,11 @@ class App {
                 });
                 
                 this->_recorder ->save();
+                
+                while(true) {
+                    [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:NSEC_PER_SEC/30.0]];
+                }
+                
             }
         }
 };

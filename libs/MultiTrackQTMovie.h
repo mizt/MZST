@@ -262,7 +262,7 @@ namespace MultiTrackQTMovie {
                         
                         this->_isSaving = false;
 
-                        Event::emit(Event::SAVE_COMPLETE);
+                        EventEmitter::emit(MultiTrackQTMovie::Event::SAVE_COMPLETE);
                     }
                     
                      

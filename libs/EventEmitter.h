@@ -1,9 +1,6 @@
 #import <vector>
 
-namespace Event {
-
-    NSString *SAVE_COMPLETE = @"SAVE_COMPLETE";
-    NSString *RESET = @"RESET";
+namespace EventEmitter {
 
     class Observer {
         
