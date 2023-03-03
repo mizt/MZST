@@ -603,11 +603,13 @@ namespace MultiTrackQTMovie {
                         this->setAtomSize(stsz.second);
                     
                         if(this->is64) {
-                            Atom stco = this->initAtom("co64");
+                            Atom co64 = this->initAtom("co64");
                             this->setVersionWithFlag();
                             this->setU32(1); // Number of entries
                             std::vector<unsigned long> *offsets = mdat[n][0]->offsets();
                             this->setU32((unsigned int)((*offsets)[0]));
+                            this->setAtomSize(co64.second);
+
                         }
                         else {
                             Atom stco = this->initAtom("stco");
@@ -615,10 +617,8 @@ namespace MultiTrackQTMovie {
                             this->setU32(1); // Number of entries
                             std::vector<unsigned long> *offsets = mdat[n][0]->offsets();
                             this->setU64((*offsets)[0]);
+                            this->setAtomSize(stco.second);
                         }
-                        
-                        this->setAtomSize(stco.second);
-                        
                     }
                     else {
                         
@@ -634,7 +634,6 @@ namespace MultiTrackQTMovie {
                                     this->setU64((*offsets)[l]);
                                 }
                             }
-                        
                             this->setAtomSize(co64.second);
                         }
                         else {
@@ -647,7 +646,6 @@ namespace MultiTrackQTMovie {
                                     this->setU32((unsigned int)((*offsets)[l]));
                                 }
                             }
-                            
                             this->setAtomSize(stco.second);
                         }
                     }
