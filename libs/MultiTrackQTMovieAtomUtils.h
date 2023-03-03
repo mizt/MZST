@@ -242,7 +242,7 @@ namespace MultiTrackQTMovie {
                 
                 unsigned int maxDuration = 0;
                 for(int n=0; n<info->size(); n++) {
-                    unsigned int TotalFrames = mdat[n]->keyframes()->size();                    
+                    unsigned int TotalFrames = (unsigned int)mdat[n]->keyframes()->size();                    
                     float FPS = (float)((*info)[n].fps);
                     unsigned int Duration = (unsigned int)(TotalFrames*(this->TimeScale/FPS));
                     if(Duration>maxDuration) maxDuration = Duration;
