@@ -102,18 +102,21 @@ namespace MultiTrackQTMovie {
     class Recorder : public VideoRecorder {
         
         protected:
-        
+                
             dispatch_source_t _timer = nullptr;
             std::vector<Buffer *> *_queue;
-            std::vector<SampleData *> *_mdat;
+            std::vector<SampleData *> _mdat;
         
             unsigned long _offset = 0;
             
             void inialized() {
                 
                 if(this->_info->size()>=1) {
-                    this->_mdat = new std::vector<SampleData *>[this->_info->size()];
                     this->_queue = new std::vector<Buffer *>[this->_info->size()];
+                }
+                
+                for(int n=0; n<this->_info->size(); n++) {
+                    this->_mdat.push_back(nullptr);
                 }
                 
                 MultiTrackQTMovie::ftyp *ftyp = new MultiTrackQTMovie::ftyp();
@@ -171,11 +174,13 @@ namespace MultiTrackQTMovie {
                                 unsigned int length = this->_queue[n][k]->length();
                                 unsigned char *bytes = this->_queue[n][k]->bytes();
                                 
-                                if(this->_mdat[n].size()==0) {
-                                    this->_mdat[n].push_back(new SampleData(this->_handle,this->_offset));
+                                if(this->_mdat[n]==nullptr) {
+                                    this->_mdat[n] = new SampleData(this->_handle,this->_offset);
                                 }
                                 
-                                this->_mdat[n][this->_mdat[n].size()-1]->writeData(this->_handle,bytes,length,keyframe);
+                                
+                                
+                                this->_mdat[n]->writeData(this->_handle,bytes,length,keyframe);
                                 
                                 delete this->_queue[n][k];
                                 this->_queue[n][k] = nullptr;
@@ -204,7 +209,7 @@ namespace MultiTrackQTMovie {
                         
                         for(int n=0; n<this->_info->size(); n++) {
                             
-                            this->_mdat[n][this->_mdat[n].size()-1]->writeSize(this->_handle);
+                            this->_mdat[n]->writeSize(this->_handle);
                             
                             if((*this->_info)[n].type=="avc1") {
                                 avc1 = true;

@@ -227,7 +227,7 @@ namespace MultiTrackQTMovie {
                 return &this->bin;
             }
         
-            moov(std::vector<TrackInfo> *info, std::vector<SampleData *> *mdat, unsigned char *sps, u64 sps_size, unsigned char *pps, u64 pps_size, unsigned char *vps=nullptr, u64 vps_size=0) {
+            moov(std::vector<TrackInfo> *info, std::vector<SampleData *> mdat, unsigned char *sps, u64 sps_size, unsigned char *pps, u64 pps_size, unsigned char *vps=nullptr, u64 vps_size=0) {
         #else
         
             NSMutableData *get() {
@@ -242,13 +242,7 @@ namespace MultiTrackQTMovie {
                 
                 unsigned int maxDuration = 0;
                 for(int n=0; n<info->size(); n++) {
-                    unsigned int TotalFrames = 0;
-                    
-                    unsigned long num = mdat[n].size();
-                    for(int k=0; k<num; k++) {
-                        TotalFrames+=mdat[n][k]->keyframes()->size();
-                    }
-                    
+                    unsigned int TotalFrames = mdat[n]->keyframes()->size();                    
                     float FPS = (float)((*info)[n].fps);
                     unsigned int Duration = (unsigned int)(TotalFrames*(this->TimeScale/FPS));
                     if(Duration>maxDuration) maxDuration = Duration;
@@ -279,12 +273,7 @@ namespace MultiTrackQTMovie {
                     bool hvc1 = (((*info)[n].type)=="hvc1")?true:false;
                     
                     unsigned int track = n+1;
-                    
-                    unsigned int TotalFrames = 0;
-                    unsigned long num = mdat[n].size();
-                    for(int k=0; k<num; k++) {
-                        TotalFrames+=mdat[n][k]->keyframes()->size();
-                    }
+                    unsigned int TotalFrames = (unsigned int)(mdat[n]->keyframes()->size());
                     
                     float FPS = (float)((*info)[n].fps);
                     unsigned int SampleDelta = (unsigned int)(this->TimeScale/FPS);
@@ -542,35 +531,24 @@ namespace MultiTrackQTMovie {
                     
                     if(avc1||hvc1) {
                         
-                        unsigned int TotalKeyframes = 0;
-                        
-                        unsigned long num = mdat[n].size();
-                        for(int k=0; k<num; k++) {
-                            std::vector<bool> *keyframes = mdat[n][k]->keyframes();
-                            TotalKeyframes+=keyframes->size();
-                        }
+                        std::vector<bool> *keyframes = mdat[n]->keyframes();
+                        unsigned int TotalKeyframes = (unsigned int)keyframes->size();
                         
                         this->initAtom("stss",8+4+4+TotalKeyframes*4);
                         this->setVersionWithFlag();
                         this->setU32(TotalKeyframes);
                         
-                        unsigned int keyframeNum = 1; // origin 1
-                        for(int k=0; k<num; k++) {
-                            std::vector<bool> *keyframes = mdat[n][k]->keyframes();
-                            for(int l=0; l<keyframes->size(); l++) {
-                                if((*keyframes)[l]) this->setU32(keyframeNum);
-                                keyframeNum++;
-                            }
+                        unsigned int keyframeNum = 1;
+                        for(int k=0; k<TotalKeyframes; k++) {
+                            if((*keyframes)[k]) this->setU32(keyframeNum);
+                            keyframeNum++;
                         }
                         
                         this->initAtom("sdtp",8+4+TotalFrames);
                         this->setVersionWithFlag();
                         
-                        for(int k=0; k<num; k++) {
-                            std::vector<bool> *keyframes = mdat[n][k]->keyframes();
-                            for(int l=0; l<keyframes->size(); l++) {
-                                this->setU8(((*keyframes)[l])?32:16);
-                            }
+                        for(int k=0; k<TotalKeyframes; k++) {
+                            this->setU8(((*keyframes)[k])?32:16);
                         }
                     }
                     
@@ -585,11 +563,9 @@ namespace MultiTrackQTMovie {
                     this->setU32(0); // If this field is set to 0, then the samples have different sizes, and those sizes are stored in the sample size table.
                     this->setU32(TotalFrames); // Number of entries
                     
-                    for(int k=0; k<num; k++) {
-                        std::vector<unsigned int> *lengths = mdat[n][k]->lengths();
-                        for(int l=0; l<lengths->size(); l++) {
-                            this->setU32((*lengths)[l]);
-                        }
+                    std::vector<unsigned int> *lengths = mdat[n]->lengths();
+                    for(int k=0; k<lengths->size(); k++) {
+                        this->setU32((*lengths)[k]);
                     }
                     
                     if(avc1||hvc1) {
@@ -600,7 +576,7 @@ namespace MultiTrackQTMovie {
                             Atom co64 = this->initAtom("co64");
                             this->setVersionWithFlag();
                             this->setU32(1); // Number of entries
-                            std::vector<unsigned long> *offsets = mdat[n][0]->offsets();
+                            std::vector<unsigned long> *offsets = mdat[n]->offsets();
                             this->setU64((*offsets)[0]);
                             this->setAtomSize(co64.second);
                             
@@ -609,7 +585,7 @@ namespace MultiTrackQTMovie {
                             Atom stco = this->initAtom("stco");
                             this->setVersionWithFlag();
                             this->setU32(1); // Number of entries
-                            std::vector<unsigned long> *offsets = mdat[n][0]->offsets();
+                            std::vector<unsigned long> *offsets = mdat[n]->offsets();
                             this->setU32((unsigned int)((*offsets)[0]));
                             this->setAtomSize(stco.second);
                         }
@@ -622,11 +598,9 @@ namespace MultiTrackQTMovie {
                             Atom co64 = this->initAtom("co64");
                             this->setVersionWithFlag();
                             this->setU32(TotalFrames);
-                            for(int k=0; k<num; k++) {
-                                std::vector<unsigned long> *offsets = mdat[n][k]->offsets();
-                                for(int l=0; l<offsets->size(); l++) {
-                                    this->setU64((*offsets)[l]);
-                                }
+                            std::vector<unsigned long> *offsets = mdat[n]->offsets();
+                            for(int k=0; k<offsets->size(); k++) {
+                                this->setU64((*offsets)[k]);
                             }
                             this->setAtomSize(co64.second);
                         }
@@ -634,11 +608,9 @@ namespace MultiTrackQTMovie {
                             Atom stco = this->initAtom("stco");
                             this->setVersionWithFlag();
                             this->setU32(TotalFrames);
-                            for(int k=0; k<num; k++) {
-                                std::vector<unsigned long> *offsets = mdat[n][k]->offsets();
-                                for(int l=0; l<offsets->size(); l++) {
-                                    this->setU32((unsigned int)((*offsets)[l]));
-                                }
+                            std::vector<unsigned long> *offsets = mdat[n]->offsets();
+                            for(int k=0; k<offsets->size(); k++) {
+                                this->setU32((unsigned int)((*offsets)[k]));
                             }
                             this->setAtomSize(stco.second);
                         }
