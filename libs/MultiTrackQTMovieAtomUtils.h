@@ -432,26 +432,23 @@ namespace MultiTrackQTMovie {
                         Atom hvcC = this->initAtom("hvcC");
 
                         this->setU8(1); // configurationVersion
-                        this->setU8(0); // general_profile_space
-                        this->setU32(0); // general_tier_flag, general_profile_idc, general_profile_compatibility
+                        
+                        this->setU8(1); // general_profile_space, general_tier_flag, general_profile_idc
+                        this->setU32(0b01100000000000000000000000000000); // general_profile_compatibility
                         
                         // general_constraint_indicator
+                        this->setU8(1<<7|0<<6|1<<5|1<<4); // general_progressive_source_flag, general interlaced source flag, general_non packed_constraint_flag, general_frame_only_constraint_flag
                         this->setU8(0);
-                        this->setU8(0);
-                        this->setU8(0);
-                        this->setU8(0);
-                        this->setU8(0);
-                        this->setU8(0);
+                        this->setU32(0);
                         
-                        this->setU8(0); // general_level_idc
-                        this->setU16(0); // min_spatial_segmentation_idc
-                        this->setU8(0); // parallelismType
-                        this->setU8(0); // chroma_format_idc
-                        this->setU8(0); // bit_depth_luma_minus8
-                        this->setU8(0); // bit_depth_chroma_minus8
-                        // avgFrameRate
-                        this->setU16(0); // constantFrameRate
-                        this->setU8(3); // numTemporalLayers, temporalIdNested, lengthSizeMinusOne
+                        this->setU8(6.1*30); // general_level_idc [1,2,2.1,3,3.1,4,4.1,5,5.1,5.2,6,6.1,6.2]*30.0
+                        this->setU16(0xF000); // min_spatial_segmentation_idc
+                        this->setU8(0xFC); // parallelismType
+                        this->setU8(0xFD); // chroma_format_idc (4:2:0)
+                        this->setU8(0xF8); // bit_depth_luma_minus8
+                        this->setU8(0xF8); // bit_depth_chroma_minus8
+                        this->setU16(0); // avgFrameRate
+                        this->setU8(1<<3|3); // numTemporalLayers, temporalIdNested, lengthSizeMinusOne
                         
                         this->setU8(3); // numOfArrays
                         
