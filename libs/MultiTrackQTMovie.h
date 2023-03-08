@@ -262,8 +262,6 @@ namespace MultiTrackQTMovie {
 
                         EventEmitter::emit(MultiTrackQTMovie::Event::SAVE_COMPLETE);
                     }
-                    
-                     
                 });
                 if(this->_timer) dispatch_resume(this->_timer);
                 

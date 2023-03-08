@@ -23,6 +23,7 @@ namespace EventEmitter {
                 this->_observer = nil;
             }
     };
+    
     std::vector<Observer *> events;
 
     void on(NSString *type, void (^callback)(NSNotification *)) {

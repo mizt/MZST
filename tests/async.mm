@@ -1,7 +1,8 @@
 #import <Cocoa/Cocoa.h>
 #import <vector>
 
-#import "Event.h"
+#import "MultiTrackQTMovieEvent.h"
+#import "EventEmitter.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,7 +135,7 @@ class App {
                 this->_queue.push_back(std::make_pair(nullptr,0));
             }
             
-            Event::on(Event::SAVE_COMPLETE,^(NSNotification *notification) {
+            EventEmitter::on(MultiTrackQTMovie::Event::SAVE_COMPLETE,^(NSNotification *notification) {
                 
                 if(this->_recorder) {
                     delete this->_recorder;
@@ -160,7 +161,7 @@ class App {
                     
                     delete[] ypbpr;
                         
-                    Event::emit(Event::RESET);
+                    EventEmitter::emit(MultiTrackQTMovie::Event::RESET);
                 }
                 
             });
@@ -202,7 +203,7 @@ class App {
     [[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSModalPanelRunLoopMode];
     [[NSRunLoop currentRunLoop] addTimer:self->timer forMode:NSEventTrackingRunLoopMode];
     
-    Event::on(Event::RESET,^(NSNotification *notification) {
+    EventEmitter::on(MultiTrackQTMovie::Event::RESET,^(NSNotification *notification) {
         delete self->app;
         self->app = nullptr;
         [NSApp terminate:nil];
