@@ -178,8 +178,6 @@ namespace MultiTrackQTMovie {
                                     this->_mdat[n] = new SampleData(this->_handle,this->_offset);
                                 }
                                 
-                                
-                                
                                 this->_mdat[n]->writeData(this->_handle,bytes,length,keyframe);
                                 
                                 delete this->_queue[n][k];

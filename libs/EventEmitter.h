@@ -39,7 +39,8 @@ namespace EventEmitter {
         }
         
         if(observer==nil) {
-            id observer = [[NSNotificationCenter defaultCenter]
+            
+            observer = [[NSNotificationCenter defaultCenter]
                 addObserverForName:type
                 object:nil
                 queue:[NSOperationQueue mainQueue]
@@ -54,7 +55,9 @@ namespace EventEmitter {
     }
 
     void off(NSString *type) {
+        
         id observer = nil;
+        
         long len = events.size();
         while(len--) {
             if(events[len]->type()&&[events[len]->type() compare:type]==NSOrderedSame) {

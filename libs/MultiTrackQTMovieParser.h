@@ -476,6 +476,3 @@ namespace MultiTrackQTMovie {
     };
 
 };
-
-                                
-                                
