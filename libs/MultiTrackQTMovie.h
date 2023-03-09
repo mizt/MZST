@@ -145,13 +145,8 @@ namespace MultiTrackQTMovie {
                     this->_timer = nullptr;
                 }
             }
-            
-        public:
-            
-            Recorder(NSString *fileName,std::vector<TrackInfo> *info) : VideoRecorder(fileName,info) {
-                
-                this->inialized();
-                
+        
+            void setup() {
                 this->_timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,dispatch_queue_create("ENTER_FRAME",0));
                 dispatch_source_set_timer(this->_timer,DISPATCH_TIME_NOW,NSEC_PER_SEC/30.0,0);
                 dispatch_source_set_event_handler(this->_timer,^{
@@ -262,12 +257,18 @@ namespace MultiTrackQTMovie {
                     }
                 });
                 if(this->_timer) dispatch_resume(this->_timer);
-                
-                
+            }
+        
+        public:
+            
+            Recorder(NSString *fileName,std::vector<TrackInfo> *info) : VideoRecorder(fileName,info) {
+                this->inialized();
+                this->setup();
             }
             
             Recorder(std::vector<TrackInfo> *info) : VideoRecorder(nil,info) {
                 this->inialized();
+                this->setup();
             }
             
             Recorder *add(unsigned char *data, unsigned int length, unsigned int trackid, bool keyframe=true) {
@@ -279,6 +280,9 @@ namespace MultiTrackQTMovie {
                     }
                     
                     if(trackid>=0&&trackid<this->_info->size()) {
+                        
+                        //NSLog(@"%d",length);
+                        
                         this->_queue[trackid].push_back(new Buffer(data,length,keyframe));
                     }
                 }
@@ -289,6 +293,7 @@ namespace MultiTrackQTMovie {
             void save() {
                 
                 if(this->_isRunning&&!this->_isSaving) {
+                                        
                     this->_isSaving = true;
                     this->_isRunning = false;
                 }

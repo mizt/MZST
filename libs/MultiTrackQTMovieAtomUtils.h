@@ -144,7 +144,7 @@ namespace MultiTrackQTMovie {
         
         private:
             
-            const bool is64 = true;
+            const bool is64 = false;
             const int Transfer = 1;
             unsigned int ModificationTime = CreationTime;
             unsigned int TimeScale = 30000;
@@ -529,22 +529,25 @@ namespace MultiTrackQTMovie {
                     if(avc1||hvc1) {
                         
                         std::vector<bool> *keyframes = mdat[n]->keyframes();
-                        unsigned int TotalKeyframes = (unsigned int)keyframes->size();
+                        unsigned int TotalKeyframes = 0;
+                        for(int k=0; k<TotalFrames; k++) {
+                            if((*keyframes)[k]) TotalKeyframes++;
+                        }
                         
                         this->initAtom("stss",8+4+4+TotalKeyframes*4);
                         this->setVersionWithFlag();
                         this->setU32(TotalKeyframes);
                         
-                        unsigned int keyframeNum = 1;
-                        for(int k=0; k<TotalKeyframes; k++) {
-                            if((*keyframes)[k]) this->setU32(keyframeNum);
-                            keyframeNum++;
+                        for(int k=0; k<TotalFrames; k++) {
+                            if((*keyframes)[k]) {
+                                this->setU32(k+1); // 1 origin
+                            }
                         }
                         
                         this->initAtom("sdtp",8+4+TotalFrames);
                         this->setVersionWithFlag();
                         
-                        for(int k=0; k<TotalKeyframes; k++) {
+                        for(int k=0; k<TotalFrames; k++) {
                             this->setU8(((*keyframes)[k])?32:16);
                         }
                     }
@@ -565,10 +568,10 @@ namespace MultiTrackQTMovie {
                         this->setU32((*lengths)[k]);
                     }
                     
+                    this->setAtomSize(stsz.second);
+
                     if(avc1||hvc1) {
-                        
-                        this->setAtomSize(stsz.second);
-                    
+                                            
                         if(this->is64) {
                             Atom co64 = this->initAtom("co64");
                             this->setVersionWithFlag();
@@ -588,8 +591,6 @@ namespace MultiTrackQTMovie {
                         }
                     }
                     else {
-                        
-                        this->setAtomSize(stsz.second);
                         
                         if(this->is64) {
                             Atom co64 = this->initAtom("co64");
